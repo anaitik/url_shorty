@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+      integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk"
+      crossorigin="anonymous"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+Thambi+2:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <meta property="og:title" content="Shorty - URL Shortener" />
+    <meta
+      property="og:description"
+      content="Generate random or custom short URLs as well as QR Code for your long URLs."
+    />
+    <meta
+      property="og:image"
+      content="https://w0.pngwave.com/png/789/777/computer-icons-tinyurl-hyperlink-symbol-url-shortening-chain-png-clip-art.png"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
+    <title>Shorty | URL Shortener</title>
+    <style>
+      body {
+        font-family: "Baloo Thambi 2", cursive;
+      }
+      input.placeholder {
+        text-align: center;
+      }
+      #right {
+        float: right;
+        width: 120px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <div class="container">
+        <a class="navbar-brand" href="{% url 'home' %}">Shorty</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-toggle="collapse"
+          data-target="#navbarNavDropdown"
+          aria-controls="navbarNavDropdown"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+          <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'home' %}">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" style="cursor: pointer" id="getAPIBtn"
+                >Get API Key</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'api_doc' %}">API Docs</a>
+            </li>
+            {% if user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'passwordChange' %}"
+                >Change Password</a
+              >
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'home_shortener' %}">Try Now</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'loginPage' %}">Login</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'signup' %}">Signup</a>
+            </li>
+
+            {% endif %}
+            <li class="nav-item">
+              <a
+                class="nav-link"
+                href="http://ashutoshkrris.herokuapp.com"
+                target="_blank"
+                >Developer</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <br />
+
+    {% block content %} {% endblock %}
+
+    <footer>
+      <div class="footer-copyright text-center py-3">
+        Made with ❤️️ using Django <br />© 2020 Copyright
+        <a href="http://ashutoshkrris.herokuapp.com/"> Ashutosh Krishna</a>
+      </div>
+    </footer>
+    <script>
+      $("#getAPIBtn").click(function (e) {
+        e.preventDefault();
+        Swal.fire({
+          title: "Get API Key",
+          html: `<form action="" id="getAPIForm">
+          <input type="text" id="name" name="name" class="swal2-input" placeholder="Name">
+        <input type="email" id="email" name="email" class="swal2-input" placeholder="Email address">
+        <small>Enter valid email address only, we'll send API Key there only.</small>
+        <br>
+        <small>To use the API Key, you must send it in the request body as <strong>api_key</strong>.</small>
+        </form>
+        `,
+          confirmButtonText: "Send API Key",
+          showLoaderOnConfirm: true,
+          preConfirm: () => {
+            const email = Swal.getPopup().querySelector("#email").value;
+            const name = Swal.getPopup().querySelector("#name").value;
+            var pattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+            if (!name) {
+              Swal.showValidationMessage(`Name is missing`);
+            } else if (!email) {
+              Swal.showValidationMessage(`Email address is missing.`);
+            } else if (String(email).search(pattern) == -1) {
+              Swal.showValidationMessage(`Enter a valid email address`);
+            }
+            return {
+              email: email,
+              name: name,
+            };
+          },
+          allowOutsideClick: () => !Swal.isLoading(),
+        }).then((result) => {
+          if (result.value) {
+            fetch(`/api/send-api-key/`, {
+              body: JSON.stringify({
+                email: result.value.email,
+                name: result.value.name,
+              }),
+              method: "POST",
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.api_success) {
+                  Swal.fire({
+                    icon: "success",
+                    title: "Sent",
+                    html: `We've sent your key on <strong>${result.value.email}</strong>`,
+                  });
+                } else if (data.api_duplicate) {
+                  Swal.fire({
+                    icon: "error",
+                    title: "Oops..",
+                    html: `We've already sent you an API Key on <strong>${result.value.email}</strong>`,
+                  });
+                } else {
+                  Swal.fire({
+                    icon: "error",
+                    title: "Oops..",
+                    text: `We've encountered some error while sending key. Please try again.`,
+                  });
+                }
+              });
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
